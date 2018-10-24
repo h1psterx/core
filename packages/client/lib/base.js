@@ -1,9 +1,11 @@
-module.exports = class Base {
+class Base {
   /**
    * @constructor
-   * @param {Object} http
+   * @param {HttpClient} http
    */
   constructor (http) {
     this.http = http
   }
 }
+
+module.exports = Base

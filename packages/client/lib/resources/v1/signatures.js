@@ -1,11 +1,21 @@
-const Base = require('../../base')
+/**
+ * @module resources.v1
+ */
 
-module.exports = class Signatures extends Base {
+ const Base = require('../../base')
+
+/**
+ * @class
+ * @extends Base
+ */
+class Signatures extends Base {
   /**
    * Get signature fee.
-   * @return {Promise}
+   * @returns {Promise}
    */
   fee () {
     return this.http.get('signatures/fee')
   }
 }
+
+module.exports = Signatures

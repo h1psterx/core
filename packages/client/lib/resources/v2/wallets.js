@@ -1,10 +1,18 @@
+/**
+ * @module resources.v2
+ */
+
 const Base = require('../../base')
 
-module.exports = class Wallets extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Wallets extends Base {
   /**
    * Get all wallets.
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   all (query) {
     return this.http.get('wallets', query)
@@ -13,7 +21,7 @@ module.exports = class Wallets extends Base {
   /**
    * Get top wallets.
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   top (query) {
     return this.http.get('wallets/top', query)
@@ -22,7 +30,7 @@ module.exports = class Wallets extends Base {
   /**
    * Get wallet by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (id) {
     return this.http.get(`wallets/${id}`)
@@ -32,7 +40,7 @@ module.exports = class Wallets extends Base {
    * Get transactions by wallet id.
    * @param  {String} id
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   transactions (id, query) {
     return this.http.get(`wallets/${id}/transactions`, query)
@@ -42,7 +50,7 @@ module.exports = class Wallets extends Base {
    * Get sent transactions by wallet id.
    * @param  {String} id
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   transactionsSent (id, query) {
     return this.http.get(`wallets/${id}/transactions/sent`, query)
@@ -52,7 +60,7 @@ module.exports = class Wallets extends Base {
    * Get received transactions by wallet id.
    * @param  {String} id
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   transactionsReceived (id, query) {
     return this.http.get(`wallets/${id}/transactions/received`, query)
@@ -61,7 +69,7 @@ module.exports = class Wallets extends Base {
   /**
    * Get votes by wallet id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   votes (id) {
     return this.http.get(`wallets/${id}/votes`)
@@ -70,9 +78,11 @@ module.exports = class Wallets extends Base {
   /**
    * Search for wallets.
    * @param  {Object} payload
-   * @return {Promise}
+   * @returns {Promise}
    */
   search (payload) {
     return this.http.post('wallets/search', payload)
   }
 }
+
+module.exports = Wallets

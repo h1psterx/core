@@ -1,9 +1,20 @@
+/**
+ * @module resources.v2
+ */
+
 const Base = require('../../base')
 
-module.exports = class Node extends Base {
+/**
+ * @kind class
+ * @override
+ * @extends Base
+ * "Node" is a global type specified in the tsd-jsdoc.
+ * The annotation "kind" and "override" is required to make it work.
+ */
+class Node extends Base {
   /**
    * Get node status.
-   * @return {Promise}
+   * @returns {Promise}
    */
   status () {
     return this.http.get('node/status')
@@ -11,7 +22,7 @@ module.exports = class Node extends Base {
 
   /**
    * Get node syncing status.
-   * @return {Promise}
+   * @returns {Promise}
    */
   syncing () {
     return this.http.get('node/syncing')
@@ -19,9 +30,11 @@ module.exports = class Node extends Base {
 
   /**
    * Get node configuration.
-   * @return {Promise}
+   * @returns {Promise}
    */
   configuration () {
     return this.http.get('node/configuration')
   }
 }
+
+module.exports = Node

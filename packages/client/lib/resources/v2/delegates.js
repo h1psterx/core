@@ -1,10 +1,19 @@
+/**
+ * @module resources.v2
+ */
+
 const Base = require('../../base')
 
-module.exports = class Delegates extends Base {
+/**
+ * @class
+ * @extends Base
+ * dasdas
+ */
+class Delegates extends Base {
   /**
    * Get all delegates.
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   all (query) {
     return this.http.get('delegates', query)
@@ -13,7 +22,7 @@ module.exports = class Delegates extends Base {
   /**
    * Get delegate by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (id) {
     return this.http.get(`delegates/${id}`)
@@ -23,7 +32,7 @@ module.exports = class Delegates extends Base {
    * Get blocks forged by delegate id.
    * @param  {String} id
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   blocks (id, query) {
     return this.http.get(`delegates/${id}/blocks`, query)
@@ -33,9 +42,11 @@ module.exports = class Delegates extends Base {
    * Get voters by delegate id.
    * @param  {String} id
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   voters (id, query) {
     return this.http.get(`delegates/${id}/voters`, query)
   }
 }
+
+module.exports = Delegates

@@ -1,9 +1,17 @@
+/**
+ * @module resources.v2
+ */
+
 const Base = require('../../base')
 
-module.exports = class Statistics extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Statistics extends Base {
   /**
    * Get network statistics.
-   * @return {Promise}
+   * @returns {Promise}
    */
   blockchain () {
     return this.http.get('statistics/blockchain')
@@ -11,7 +19,7 @@ module.exports = class Statistics extends Base {
 
   /**
    * Get transaction statistics.
-   * @return {Promise}
+   * @returns {Promise}
    */
   transactions () {
     return this.http.get('statistics/transactions')
@@ -19,7 +27,7 @@ module.exports = class Statistics extends Base {
 
   /**
    * Get block statistics.
-   * @return {Promise}
+   * @returns {Promise}
    */
   blocks () {
     return this.http.get('statistics/blocks')
@@ -27,7 +35,7 @@ module.exports = class Statistics extends Base {
 
   /**
    * Get vote statistics.
-   * @return {Promise}
+   * @returns {Promise}
    */
   votes () {
     return this.http.get('statistics/votes')
@@ -35,9 +43,11 @@ module.exports = class Statistics extends Base {
 
   /**
    * Get unvote statistics.
-   * @return {Promise}
+   * @returns {Promise}
    */
   unvotes () {
     return this.http.get('statistics/unvotes')
   }
 }
+
+module.exports = Statistics

@@ -1,10 +1,18 @@
+/**
+ * @module resources.v1
+ */
+
 const Base = require('../../base')
 
-module.exports = class Delegates extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Delegates extends Base {
   /**
    * Get all delegates.
    * @param  {Object} query
-   * @return {Promise}
+   * @returns {Promise}
    */
   all (query) {
     return this.http.get('delegates', query)
@@ -13,7 +21,7 @@ module.exports = class Delegates extends Base {
   /**
    * Get delegate by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (id) {
     return this.http.get('delegates/get', { id })
@@ -21,7 +29,7 @@ module.exports = class Delegates extends Base {
 
   /**
    * Get quantity of delegates.
-   * @return {Promise}
+   * @returns {Promise}
    */
   count () {
     return this.http.get('delegates/count')
@@ -29,7 +37,7 @@ module.exports = class Delegates extends Base {
 
   /**
    * Get delegate fee.
-   * @return {Promise}
+   * @returns {Promise}
    */
   fee () {
     return this.http.get('delegates/fee')
@@ -38,7 +46,7 @@ module.exports = class Delegates extends Base {
   /**
    * Get delegate forged data by public key.
    * @param  {String} generatorPublicKey
-   * @return {Promise}
+   * @returns {Promise}
    */
   forged (generatorPublicKey) {
     return this.http.get('delegates/forging/getForgedByAccount', { generatorPublicKey })
@@ -49,7 +57,7 @@ module.exports = class Delegates extends Base {
    * @param  {Object} query
    * @param  {String} query.q
    * @param  {Number} query.limit
-   * @return {Promise}
+   * @returns {Promise}
    */
   search (query) {
     return this.http.get('delegates/search', query)
@@ -58,9 +66,11 @@ module.exports = class Delegates extends Base {
   /**
    * Get voters for delegate.
    * @param  {String} publicKey
-   * @return {Promise}
+   * @returns {Promise}
    */
   voters (publicKey) {
     return this.http.get('delegates/voters', { publicKey })
   }
 }
+
+module.exports = Delegates

@@ -1,10 +1,18 @@
+/**
+ * @module resources.v1
+ */
+
 const Base = require('../../base')
 
-module.exports = class Blocks extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Blocks extends Base {
   /**
    * Get all blocks.
    * @param  {Object} query
-   * @return {Promise}
+   * @returns {Promise}
    */
   all (query) {
     return this.http.get('blocks', query)
@@ -13,7 +21,7 @@ module.exports = class Blocks extends Base {
   /**
    * Get block by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (id) {
     return this.http.get('blocks/get', { id })
@@ -21,7 +29,7 @@ module.exports = class Blocks extends Base {
 
   /**
    * Get epoch time from config.
-   * @return {Promise}
+   * @returns {Promise}
    */
   epoch () {
     return this.http.get('blocks/getEpoch')
@@ -29,7 +37,7 @@ module.exports = class Blocks extends Base {
 
   /**
    * Get the transfer fee from config.
-   * @return {Promise}
+   * @returns {Promise}
    */
   fee () {
     return this.http.get('blocks/getFee')
@@ -37,7 +45,7 @@ module.exports = class Blocks extends Base {
 
   /**
    * Get all fees from config.
-   * @return {Promise}
+   * @returns {Promise}
    */
   fees () {
     return this.http.get('blocks/getFees')
@@ -45,7 +53,7 @@ module.exports = class Blocks extends Base {
 
   /**
    * Get current height.
-   * @return {Promise}
+   * @returns {Promise}
    */
   height () {
     return this.http.get('blocks/getHeight')
@@ -53,7 +61,7 @@ module.exports = class Blocks extends Base {
 
   /**
    * Get current milestone.
-   * @return {Promise}
+   * @returns {Promise}
    */
   milestone () {
     return this.http.get('blocks/getMilestone')
@@ -61,7 +69,7 @@ module.exports = class Blocks extends Base {
 
   /**
    * Get nethash from config.
-   * @return {Promise}
+   * @returns {Promise}
    */
   nethash () {
     return this.http.get('blocks/getNethash')
@@ -69,7 +77,7 @@ module.exports = class Blocks extends Base {
 
   /**
    * Get reward from config.
-   * @return {Promise}
+   * @returns {Promise}
    */
   reward () {
     return this.http.get('blocks/getReward')
@@ -77,7 +85,7 @@ module.exports = class Blocks extends Base {
 
   /**
    * Get config/status for the network.
-   * @return {Promise}
+   * @returns {Promise}
    */
   status () {
     return this.http.get('blocks/getStatus')
@@ -85,9 +93,11 @@ module.exports = class Blocks extends Base {
 
   /**
    * Calculate network supply.
-   * @return {Promise}
+   * @returns {Promise}
    */
   supply () {
     return this.http.get('blocks/getSupply')
   }
 }
+
+module.exports = Blocks

@@ -1,10 +1,18 @@
+/**
+ * @module resources.v2
+ */
+
 const Base = require('../../base')
 
-module.exports = class Blocks extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Blocks extends Base {
   /**
    * Get all blocks.
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   all (query) {
     return this.http.get('blocks', query)
@@ -13,7 +21,7 @@ module.exports = class Blocks extends Base {
   /**
    * Get block by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (id) {
     return this.http.get(`blocks/${id}`)
@@ -23,7 +31,7 @@ module.exports = class Blocks extends Base {
    * Get transactions by block id.
    * @param  {String} id
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   transactions (id, query) {
     return this.http.get(`blocks/${id}/transactions`, query)
@@ -32,9 +40,11 @@ module.exports = class Blocks extends Base {
   /**
    * Search for blocks.
    * @param  {Object} payload
-   * @return {Promise}
+   * @returns {Promise}
    */
   search (payload) {
     return this.http.post('blocks/search', payload)
   }
 }
+
+module.exports = Blocks

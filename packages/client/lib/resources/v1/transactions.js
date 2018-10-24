@@ -1,10 +1,18 @@
+/**
+ * @module resources.v1
+ */
+
 const Base = require('../../base')
 
-module.exports = class Transactions extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Transactions extends Base {
   /**
    * Get all transactions.
    * @param  {Object} query
-   * @return {Promise}
+   * @returns {Promise}
    */
   all (query) {
     return this.http.get('transactions', query)
@@ -13,7 +21,7 @@ module.exports = class Transactions extends Base {
   /**
    * Get transaction by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (id) {
     return this.http.get('transactions/get', { id })
@@ -22,7 +30,7 @@ module.exports = class Transactions extends Base {
   /**
    * Get all unconfirmed transactions.
    * @param  {Object} query
-   * @return {Promise}
+   * @returns {Promise}
    */
   allUnconfirmed (query) {
     return this.http.get('transactions/unconfirmed', query)
@@ -31,9 +39,11 @@ module.exports = class Transactions extends Base {
   /**
    * Get unconfirmed transaction by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   getUnconfirmed (id) {
     return this.http.get('transactions/unconfirmed/get', { id })
   }
 }
+
+module.exports = Transactions

@@ -1,10 +1,18 @@
+/**
+ * @module resources.v2
+ */
+
 const Base = require('../../base')
 
-module.exports = class Votes extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Votes extends Base {
   /**
    * Get all votes.
    * @param {Object} [query]
-   * @return {Promise}
+   * @returns {Promise}
    */
   all (query) {
     return this.http.get('votes', query)
@@ -13,9 +21,11 @@ module.exports = class Votes extends Base {
   /**
    * Get vote by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (id) {
     return this.http.get(`votes/${id}`)
   }
 }
+
+module.exports = Votes

@@ -1,10 +1,18 @@
+/**
+ * @module resources.v1
+ */
+
 const Base = require('../../base')
 
-module.exports = class Wallets extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Wallets extends Base {
   /**
    * Get all wallets.
    * @param  {Object} query
-   * @return {Promise}
+   * @returns {Promise}
    */
   all (query) {
     return this.http.get('accounts/getAllAccounts', query)
@@ -13,7 +21,7 @@ module.exports = class Wallets extends Base {
   /**
    * Get a wallet by address.
    * @param  {String} address
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (address) {
     return this.http.get('accounts', { address })
@@ -21,7 +29,7 @@ module.exports = class Wallets extends Base {
 
   /**
    * Count how many wallets there are.
-   * @return {Promise}
+   * @returns {Promise}
    */
   count () {
     return this.http.get('accounts/count')
@@ -30,7 +38,7 @@ module.exports = class Wallets extends Base {
   /**
    * Get deletate by address.
    * @param  {String} address
-   * @return {Promise}
+   * @returns {Promise}
    */
   delegates (address) {
     return this.http.get('accounts/delegates', { address })
@@ -38,7 +46,7 @@ module.exports = class Wallets extends Base {
 
   /**
    * Get delegate fees.
-   * @return {Promise}
+   * @returns {Promise}
    */
   fee () {
     return this.http.get('accounts/delegates/fee')
@@ -47,7 +55,7 @@ module.exports = class Wallets extends Base {
   /**
    * Get wallet balance by Address.
    * @param  {String} address
-   * @return {Promise}
+   * @returns {Promise}
    */
   balance (address) {
     return this.http.get('accounts/getBalance', { address })
@@ -56,7 +64,7 @@ module.exports = class Wallets extends Base {
   /**
    * Get wallet public key by Address.
    * @param  {String} address
-   * @return {Promise}
+   * @returns {Promise}
    */
   publicKey (address) {
     return this.http.get('accounts/getPublicKey', { address })
@@ -65,9 +73,11 @@ module.exports = class Wallets extends Base {
   /**
    * Get the top wallets.
    * @param  {Object} query
-   * @return {Promise}
+   * @returns {Promise}
    */
   top (query) {
     return this.http.get('accounts/top', query)
   }
 }
+
+module.exports = Wallets

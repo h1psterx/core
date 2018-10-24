@@ -1,9 +1,17 @@
+/**
+ * @module resources.v1
+ */
+
 const Base = require('../../base')
 
-module.exports = class Loader extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Loader extends Base {
   /**
    * Get network configuration.
-   * @return {Promise}
+   * @returns {Promise}
    */
   status () {
     return this.http.get('loader/autoconfigure')
@@ -11,7 +19,7 @@ module.exports = class Loader extends Base {
 
   /**
    * Get node status.
-   * @return {Promise}
+   * @returns {Promise}
    */
   syncing () {
     return this.http.get('loader/status')
@@ -19,9 +27,11 @@ module.exports = class Loader extends Base {
 
   /**
    * Get node syncing status.
-   * @return {Promise}
+   * @returns {Promise}
    */
   configuration () {
     return this.http.get('loader/status/sync')
   }
 }
+
+module.exports = Loader

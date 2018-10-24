@@ -1,10 +1,10 @@
 const axios = require('axios')
 
-module.exports = class HttpClient {
+class HttpClient {
   /**
    * @constructor
    * @param  {String} host
-   * @param  {Number = 1} [apiVersion]
+   * @param  {Number} [apiVersion=1]
    */
   constructor (host, apiVersion = 1) {
     this.host = host.endsWith('/') ? host.slice(0, -1) : host
@@ -46,7 +46,7 @@ module.exports = class HttpClient {
    * Perform a HTTP GET request.
    * @param  {String} path
    * @param  {Object} params
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (path, params = {}) {
     return this.sendRequest('get', path, { params })
@@ -56,7 +56,7 @@ module.exports = class HttpClient {
    * Perform a HTTP POST request.
    * @param  {String} path
    * @param  {Object} data
-   * @return {Promise}
+   * @returns {Promise}
    */
   post (path, data = {}) {
     return this.sendRequest('post', path, data)
@@ -66,7 +66,7 @@ module.exports = class HttpClient {
    * Perform a HTTP PUT request.
    * @param  {String} path
    * @param  {Object} data
-   * @return {Promise}
+   * @returns {Promise}
    */
   put (path, data = {}) {
     return this.sendRequest('put', path, data)
@@ -76,7 +76,7 @@ module.exports = class HttpClient {
    * Perform a HTTP PATCH request.
    * @param  {String} path
    * @param  {Object} data
-   * @return {Promise}
+   * @returns {Promise}
    */
   patch (path, data = {}) {
     return this.sendRequest('patch', path, data)
@@ -86,7 +86,7 @@ module.exports = class HttpClient {
    * Perform a HTTP DELETE request.
    * @param  {String} path
    * @param  {Object} params
-   * @return {Promise}
+   * @returns {Promise}
    */
   delete (path, params = {}) {
     return this.sendRequest('delete', path, { params })
@@ -97,7 +97,7 @@ module.exports = class HttpClient {
    * @param  {String} method
    * @param  {String} path
    * @param  {Object} payload
-   * @return {Promise}
+   * @returns {Promise}
    * @throws Will throw an error if the HTTP request fails.
    */
   sendRequest (method, path, payload) {
@@ -112,3 +112,5 @@ module.exports = class HttpClient {
     return client[method](path, payload)
   }
 }
+
+module.exports = HttpClient

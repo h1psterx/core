@@ -1,10 +1,18 @@
+/**
+ * @module resources.v1
+ */
+
 const Base = require('../../base')
 
-module.exports = class Peers extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Peers extends Base {
   /**
    * Get all peers.
    * @param  {Object} query
-   * @return {Promise}
+   * @returns {Promise}
    */
   all (query) {
     return this.http.get('peers', query)
@@ -14,7 +22,7 @@ module.exports = class Peers extends Base {
    * Get peer by IP and Port.
    * @param  {String} ip
    * @param  {Number} port
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (ip, port) {
     return this.http.get('peers/get', { ip, port })
@@ -22,9 +30,11 @@ module.exports = class Peers extends Base {
 
   /**
    * Get peer version.
-   * @return {Promise}
+   * @returns {Promise}
    */
   version () {
     return this.http.get('peers/version')
   }
 }
+
+module.exports = Peers

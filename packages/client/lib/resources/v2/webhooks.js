@@ -1,9 +1,17 @@
+/**
+ * @module resources.v2
+ */
+
 const Base = require('../../base')
 
-module.exports = class Webhooks extends Base {
+/**
+ * @class
+ * @extends Base
+ */
+class Webhooks extends Base {
   /**
    * Get all webhooks.
-   * @return {Promise}
+   * @returns {Promise}
    */
   all () {
     return this.http.get('webhooks')
@@ -12,7 +20,7 @@ module.exports = class Webhooks extends Base {
   /**
    * Create webhooks.
    * @param  {Object} payload
-   * @return {Promise}
+   * @returns {Promise}
    */
   create (payload) {
     return this.http.post('webhooks', payload)
@@ -21,7 +29,7 @@ module.exports = class Webhooks extends Base {
   /**
    * Get webhook by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   get (id) {
     return this.http.get(`webhooks/${id}`)
@@ -30,7 +38,7 @@ module.exports = class Webhooks extends Base {
   /**
    * Update webhook by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   update (id) {
     return this.http.put(`webhooks/${id}`)
@@ -39,7 +47,7 @@ module.exports = class Webhooks extends Base {
   /**
    * Delete webhook by id.
    * @param  {String} id
-   * @return {Promise}
+   * @returns {Promise}
    */
   delete (id) {
     return this.http.delete(`webhooks/${id}`)
@@ -47,9 +55,11 @@ module.exports = class Webhooks extends Base {
 
   /**
    * Get webhook events.
-   * @return {Promise}
+   * @returns {Promise}
    */
   events () {
     return this.http.get('webhooks/events')
   }
 }
+
+module.exports = Webhooks
