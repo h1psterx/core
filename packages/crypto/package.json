@@ -1,7 +1,7 @@
 {
   "name": "@arkecosystem/crypto",
-  "description": "Crypto utilities for the ARK blockchain",
-  "version": "0.2.0",
+  "description": "Crypto utilities for the Ark Blockchain",
+  "version": "0.2.2",
   "contributors": [
     "François-Xavier Thoorens <fx.thoorens@ark.io>",
     "Brian Faust <brian@ark.io>",
@@ -24,7 +24,7 @@
     "build:docs": "../../node_modules/.bin/jsdoc -c jsdoc.json",
     "test": "cross-env ARK_ENV=test jest --runInBand --detectOpenHandles",
     "test:coverage": "cross-env ARK_ENV=test jest --coverage --runInBand --detectOpenHandles",
-    "test:debug": "cross-env ARK_ENV=test node --inspect-brk ../../node_modules/.bin/jest --runInBand --watch",
+    "test:debug": "cross-env ARK_ENV=test node --inspect-brk ../../node_modules/.bin/jest --runInBand",
     "test:watch": "jest --watch",
     "test:watch:all": "jest --watchAll",
     "lint": "eslint -c ../../.eslintrc --ignore-pattern dist ./ --fix",

@@ -9,8 +9,8 @@ const orderBy = require('lodash.orderby')
  * @param {Object[]} peers
  * @returns {Object[]}
  */
-const sortPeers = peers => {
-  return orderBy(peers, ['height', 'delay'], ['desc', 'asc'])
-}
+const sortPeers = peers => orderBy(peers, [
+  'height', peers[0].latency ? 'latency' : 'delay'
+], ['desc', 'asc'])
 
 module.exports = sortPeers

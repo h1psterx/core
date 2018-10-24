@@ -67,16 +67,6 @@ describe('Transaction Pool Interface', () => {
     })
   })
 
-  describe('removeTransactions', () => {
-    it('should be a function', () => {
-      expect(poolInterface.removeTransactions).toBeFunction()
-    })
-
-    it('should throw an exception', async () => {
-      await expect(poolInterface.removeTransactions()).rejects.toThrowError('Method [removeTransactions] not implemented!')
-    })
-  })
-
   describe('getTransaction', () => {
     it('should be a function', () => {
       expect(poolInterface.getTransaction).toBeFunction()
@@ -124,6 +114,16 @@ describe('Transaction Pool Interface', () => {
 
     it('should throw an exception', async () => {
       await expect(poolInterface.hasExceededMaxTransactions()).rejects.toThrowError('Method [hasExceededMaxTransactions] not implemented!')
+    })
+  })
+
+  describe('checkIfSenderHasVoteTransactions', () => {
+    it('should be a function', () => {
+      expect(poolInterface.checkIfSenderHasVoteTransactions).toBeFunction()
+    })
+
+    it('should throw an exception', async () => {
+      expect(poolInterface.checkIfSenderHasVoteTransactions).toThrowError('Method [checkIfSenderHasVoteTransactions] not implemented!')
     })
   })
 
@@ -180,12 +180,6 @@ describe('Transaction Pool Interface', () => {
   describe('getTransactionsForForging', () => {
     it('should be a function', () => {
       expect(poolInterface.getTransactionsForForging).toBeFunction()
-    })
-  })
-
-  describe('removeForgedAndGetPending', () => {
-    it('should be a function', () => {
-      expect(poolInterface.removeForgedAndGetPending).toBeFunction()
     })
   })
 

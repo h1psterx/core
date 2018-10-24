@@ -1,13 +1,14 @@
 'use strict'
 
 const Mem = require('./mem')
+const MemPoolTransaction = require('./mem-pool-transaction')
 const Storage = require('./storage')
+const assert = require('assert')
 const container = require('@arkecosystem/core-container')
 const database = container.resolvePlugin('database')
 const emitter = container.resolvePlugin('event-emitter')
 const logger = container.resolvePlugin('logger')
 const { TRANSACTION_TYPES } = require('@arkecosystem/crypto').constants
-const { Transaction } = require('@arkecosystem/crypto').models
 const { TransactionPoolInterface } = require('@arkecosystem/core-transaction-pool')
 
 /**
@@ -23,13 +24,22 @@ class TransactionPool extends TransactionPoolInterface {
    * the on-disk database, saved there from a previous run.
    * @return {TransactionPool}
    */
-  make () {
+  async make () {
     this.mem = new Mem()
 
     this.storage = new Storage(this.options.storage)
 
-    const allSerialized = this.storage.loadAllInInsertionOrder()
-    allSerialized.forEach(s => this.mem.add(new Transaction(s), this.options.maxTransactionAge, true))
+    const all = this.storage.loadAll()
+    all.forEach(t => this.mem.add(t, this.options.maxTransactionAge, true))
+
+    this.__purgeExpired()
+
+    // Remove transactions that were forged while we were offline.
+    const allIds = all.map(memPoolTransaction => memPoolTransaction.transaction.id)
+
+    const forgedIds = await database.getForgedTransactionsIds(allIds)
+
+    forgedIds.forEach(id => this.removeTransactionById(id))
 
     return this
   }
@@ -61,7 +71,7 @@ class TransactionPool extends TransactionPoolInterface {
   getSenderSize (senderPublicKey) {
     this.__purgeExpired()
 
-    return this.mem.getIdsBySender(senderPublicKey).size
+    return this.mem.getBySender(senderPublicKey).size
   }
 
   /**
@@ -77,7 +87,7 @@ class TransactionPool extends TransactionPoolInterface {
       return
     }
 
-    this.mem.add(transaction, this.options.maxTransactionAge)
+    this.mem.add(new MemPoolTransaction(transaction), this.options.maxTransactionAge)
 
     this.__syncToPersistentStorageIfNecessary()
   }
@@ -112,15 +122,6 @@ class TransactionPool extends TransactionPoolInterface {
   }
 
   /**
-   * Remove multiple transactions from the pool (by object).
-   * @param  {Array} transactions
-   * @return {void}
-   */
-  removeTransactions (transactions) {
-    transactions.forEach(t => this.removeTransaction(t))
-  }
-
-  /**
    * Check whether sender of transaction has exceeded max transactions in queue.
    * @param  {Transaction} transaction
    * @return {Boolean} true if exceeded
@@ -135,7 +136,7 @@ class TransactionPool extends TransactionPoolInterface {
       return false
     }
 
-    const count = this.mem.getIdsBySender(transaction.senderPublicKey).size
+    const count = this.mem.getBySender(transaction.senderPublicKey).size
 
     return !(count <= this.options.maxTransactionsPerSender)
   }
@@ -152,19 +153,6 @@ class TransactionPool extends TransactionPoolInterface {
   }
 
   /**
-   * Removes any transactions in the pool that have already been forged.
-   * @param  {Array} transactionIds
-   * @return {Array} IDs of pending transactions that have yet to be forged.
-   */
-  async removeForgedAndGetPending (transactionIds) {
-    const forgedIdsSet = new Set(await database.getForgedTransactionsIds(transactionIds))
-
-    forgedIdsSet.forEach(id => this.removeTransactionById(id))
-
-    return transactionIds.filter(id => !forgedIdsSet.has(id))
-  }
-
-  /**
    * Get all transactions that are ready to be forged.
    * @param  {Number} blockSize
    * @return {(Array|void)}
@@ -172,34 +160,27 @@ class TransactionPool extends TransactionPoolInterface {
   async getTransactionsForForging (blockSize) {
     this.__purgeExpired()
 
-    try {
-      let transactionsIds = await this.getTransactionIdsForForging(0, this.mem.getSize())
+    const transactions = []
 
-      let transactions = []
-      while (transactionsIds.length) {
-        const id = transactionsIds.shift()
-        const transaction = this.mem.getTransactionById(id)
-
-        if (!transaction ||
-            !this.checkDynamicFeeMatch(transaction) ||
-            !(await this.checkApplyToBlockchain(transaction))) {
-          continue
-        }
-
-        transactions.push(transaction.serialized)
-        if (transactions.length === blockSize) {
-          break
-        }
+    for (const id of await this.getTransactionIdsForForging(0, this.mem.getSize())) {
+      if (transactions.length === blockSize) {
+        break
       }
 
-      return transactions
-    } catch (error) {
-      logger.error('Could not get transactions for forging: ', error, error.stack)
+      const transaction = this.mem.getTransactionById(id)
+
+      if (transaction &&
+          this.checkDynamicFeeMatch(transaction) &&
+          await this.checkApplyToBlockchain(transaction)) {
+        transactions.push(transaction.serialized)
+      }
     }
+
+    return transactions
   }
 
   /**
-   * Get all transactions within the specified range (in insertion order).
+   * Get all transactions within the specified range (ordered by fee).
    * @param  {Number} start
    * @param  {Number} size
    * @return {(Array|void)} array of serialized transaction hex strings
@@ -209,18 +190,32 @@ class TransactionPool extends TransactionPoolInterface {
   }
 
   /**
-   * Get all transactions within the specified range, removes already forged ones and possible duplicates
+   * Get all transactions within the specified range, removes already forged ones.
    * @param  {Number} start
    * @param  {Number} size
    * @return {Array} array of transactions IDs in the specified range
    */
   async getTransactionIdsForForging (start, size) {
     const ids = this.getTransactionsData(start, size, 'id')
-    return this.removeForgedAndGetPending(ids)
+
+    /* There should be no forged transactions in the mem pool. */
+    assert.strictEqual((await database.getForgedTransactionsIds(ids)).length, 0)
+
+    return ids
+
+    /*
+    const forgedIdsSet = new Set(await database.getForgedTransactionsIds(ids))
+
+    forgedIdsSet.forEach(id => this.removeTransactionById(id))
+
+    return ids.filter(id => !forgedIdsSet.has(id))
+    */
   }
 
   /**
-   * Get data from all transactions within the specified range
+   * Get data from all transactions within the specified range.
+   * Transactions are ordered by fee (highest fee first) or by
+   * insertion time, if fees equal (earliest transaction first).
    * @param  {Number} start
    * @param  {Number} size
    * @param  {String} property
@@ -232,13 +227,14 @@ class TransactionPool extends TransactionPoolInterface {
     const data = []
 
     let i = 0
-    for (const transaction of this.mem.getTransactionsInInsertionOrder()) {
+    for (const memPoolTransaction of this.mem.getTransactionsOrderedByFee()) {
       if (i >= start + size) {
         break
       }
 
       if (i >= start) {
-        data.push(transaction[property])
+        assert.notStrictEqual(memPoolTransaction.transaction[property], undefined)
+        data.push(memPoolTransaction.transaction[property])
       }
 
       i++
@@ -263,7 +259,7 @@ class TransactionPool extends TransactionPoolInterface {
    * @return {void}
    */
   removeTransactionsForSender (senderPublicKey) {
-    this.mem.getIdsBySender(senderPublicKey).forEach(id => this.removeTransactionById(id))
+    this.mem.getBySender(senderPublicKey).forEach(e => this.removeTransactionById(e.transaction.id))
   }
 
   /**
@@ -286,8 +282,8 @@ class TransactionPool extends TransactionPoolInterface {
   checkIfSenderHasVoteTransactions (senderPublicKey) {
     this.__purgeExpired()
 
-    for (const id of this.mem.getIdsBySender(senderPublicKey)) {
-      if (this.mem.getTransactionById(id).type === TRANSACTION_TYPES.VOTE) {
+    for (const memPoolTransaction of this.mem.getBySender(senderPublicKey)) {
+      if (memPoolTransaction.transaction.type === TRANSACTION_TYPES.VOTE) {
         return true
       }
     }
@@ -300,7 +296,7 @@ class TransactionPool extends TransactionPoolInterface {
    * @return {void}
    */
   __purgeExpired () {
-    for (const transaction of this.mem.getExpired()) {
+    for (const transaction of this.mem.getExpired(this.options.maxTransactionAge)) {
       emitter.emit('transaction.expired', transaction.data)
 
       this.walletManager.revertTransaction(transaction)

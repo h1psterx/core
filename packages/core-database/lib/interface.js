@@ -9,6 +9,8 @@ const WalletManager = require('./wallet-manager')
 const { Block } = require('@arkecosystem/crypto').models
 const { TRANSACTION_TYPES } = require('@arkecosystem/crypto').constants
 const { roundCalculator } = require('@arkecosystem/core-utils')
+const cloneDeep = require('lodash/cloneDeep')
+const assert = require('assert')
 
 module.exports = class ConnectionInterface {
   /**
@@ -66,22 +68,12 @@ module.exports = class ConnectionInterface {
   /**
    * Get the top 51 delegates.
    * @param  {Number} height
+   * @param  {Array} delegates
    * @return {void}
    * @throws Error
    */
-  async getActiveDelegates (height) {
+  async getActiveDelegates (height, delegates) {
     throw new Error('Method [getActiveDelegates] not implemented!')
-  }
-
-  /**
-   * Load a list of delegates into memory.
-   * @param  {Number} maxDelegates
-   * @param  {Number} height
-   * @return {void}
-   * @throws Error
-   */
-  async buildDelegates (maxDelegates, height) {
-    throw new Error('Method [buildDelegates] not implemented!')
   }
 
   /**
@@ -116,41 +108,42 @@ module.exports = class ConnectionInterface {
   }
 
   /**
-   * Save the given number of block (async version) in the memory Must call commit() to save to database.
+   * Queue a query to save the given block.
+   * NOTE: Must call commitQueuedQueries() to save to database.
    * NOTE: to use when rebuilding to decrease the number of database transactions, and commit blocks (save only every 1000s for instance) by calling commit
    * @param  {Block} block
    * @return {void}
    * @throws Error
    */
-  async enqueueSaveBlock (block) {
+  enqueueSaveBlock (block) {
     throw new Error('Method [enqueueSaveBlock] not implemented!')
   }
 
   /**
-   * Delete the given block (async version).
+   * Queue a query to delete the given block.
    * See also enqueueSaveBlock
    * @param  {Block} block
    * @return {void}
    * @throws Error
    */
-  async enqueueDeleteBlock (block) {
+  enqueueDeleteBlock (block) {
     throw new Error('Method [enqueueDeleteBlock] not implemented!')
   }
 
   /**
-   * Delete the round at given height (async version).
+   * Queue a query to delete the round at given height.
    * See also enqueueSaveBlock and enqueueDeleteBlock
    * @param  {Number} height
    * @return {void}
    * @throws Error
    */
-  async enqueueDeleteRound (height) {
+  enqueueDeleteRound (height) {
     throw new Error('Method [enqueueDeleteRound] not implemented!')
   }
 
   /**
    * Commit all queued queries to the database.
-   * NOTE: to be used in combination with other enqueue-functions
+   * NOTE: to be used in combination with other enqueue-functions.
    * @return {void}
    * @throws Error
    */
@@ -223,7 +216,7 @@ module.exports = class ConnectionInterface {
    * @return {void}
    * @throws Error
    */
-  saveRound (activeDelegates) {
+  async saveRound (activeDelegates) {
     throw new Error('Method [saveRound] not implemented!')
   }
 
@@ -233,7 +226,7 @@ module.exports = class ConnectionInterface {
    * @return {void}
    * @throws Error
    */
-  deleteRound (round) {
+  async deleteRound (round) {
     throw new Error('Method [deleteRound] not implemented!')
   }
 
@@ -284,21 +277,19 @@ module.exports = class ConnectionInterface {
     if (nextHeight % maxDelegates === 1) {
       const round = Math.floor((nextHeight - 1) / maxDelegates) + 1
 
-      if (!this.activeDelegates || this.activeDelegates.length === 0 || (this.activeDelegates.length && this.activeDelegates[0].round !== round)) {
+      if (!this.forgingDelegates || this.forgingDelegates.length === 0 || (this.forgingDelegates.length && this.forgingDelegates[0].round !== round)) {
         logger.info(`Starting Round ${round} :dove_of_peace:`)
 
         try {
-          this.walletManager.updateDelegates()
-          this.updateDelegateStats(height, this.activeDelegates)
-          await this.saveWallets(false) // save only modified wallets during the last round
-          const delegates = await this.buildDelegates(maxDelegates, nextHeight) // active build delegate list from database state
-          await this.saveRound(delegates) // save next round delegate list
-          await this.getActiveDelegates(nextHeight) // generate the new active delegates list
-
+          this.updateDelegateStats(height, this.forgingDelegates)
+          this.saveWallets(false) // save only modified wallets during the last round
+          const delegates = this.walletManager.loadActiveDelegateList(maxDelegates, nextHeight) // get active delegate list from in-memory wallet manager
+          this.saveRound(delegates) // save next round delegate list non-blocking
+          this.forgingDelegates = await this.getActiveDelegates(nextHeight, delegates) // generate the new active delegates list
           this.blocksInCurrentRound.length = 0
         } catch (error) {
           // trying to leave database state has it was
-          this.deleteRound(round)
+          await this.deleteRound(round)
           throw error
         }
       } else {
@@ -318,11 +309,47 @@ module.exports = class ConnectionInterface {
     if (nextRound === round + 1 && height >= maxDelegates) {
       logger.info(`Back to previous round: ${round} :back:`)
 
-      this.blocksInCurrentRound = await this.__getBlocksForRound(round)
-      this.activeDelegates = await this.getActiveDelegates(height)
+      const delegates = await this.__calcPreviousActiveDelegates(round)
+      this.forgingDelegates = await this.getActiveDelegates(height, delegates)
 
       await this.deleteRound(nextRound)
     }
+  }
+
+  /**
+   * Calculate the active delegates of the previous round. In order to do
+   * so we need to go back to the start of that round. Therefore we create
+   * a temporary wallet manager with all delegates and revert all blocks
+   * and transactions of that round to get the initial vote balances
+   * which are then used to restore the original order.
+   * @param {Number} round
+   */
+  async __calcPreviousActiveDelegates (round) {
+    // TODO: cache the blocks of the last X rounds
+    this.blocksInCurrentRound = await this.__getBlocksForRound(round)
+
+    // Create temp wallet manager from all delegates
+    const tempWalletManager = new WalletManager()
+    tempWalletManager.index(cloneDeep(this.walletManager.allByUsername()))
+
+    // Revert all blocks in reverse order
+    let height = 0
+    for (let i = this.blocksInCurrentRound.length - 1; i >= 0; i--) {
+      tempWalletManager.revertBlock(this.blocksInCurrentRound[i])
+      height = this.blocksInCurrentRound[i].data.height
+    }
+
+    // The first round has no active delegates
+    if (height === 1) {
+      return []
+    }
+
+    // Assert that the height is the beginning of a round.
+    const { maxDelegates } = roundCalculator.calculateRound(height)
+    assert(height > 1 && height % maxDelegates === 1)
+
+    // Now retrieve the active delegate list from the temporary wallet manager.
+    return tempWalletManager.loadActiveDelegateList(maxDelegates, height)
   }
 
   /**
@@ -331,6 +358,10 @@ module.exports = class ConnectionInterface {
    * @return {void}
    */
   async validateDelegate (block) {
+    if (this.__isException(block.data)) {
+      return true
+    }
+
     const delegates = await this.getActiveDelegates(block.data.height)
     const slot = slots.getSlotNumber(block.data.timestamp)
     const forgingDelegate = delegates[slot % delegates.length]
@@ -494,5 +525,22 @@ module.exports = class ConnectionInterface {
   async _registerRepositories () {
     this['wallets'] = new (require('./repositories/wallets'))(this)
     this['delegates'] = new (require('./repositories/delegates'))(this)
+  }
+
+  /**
+   * Determine if the given block is an exception.
+   * @param  {Object} block
+   * @return {Boolean}
+   */
+  __isException (block) {
+    if (!config) {
+      return false
+    }
+
+    if (!Array.isArray(config.network.exceptions.blocks)) {
+      return false
+    }
+
+    return config.network.exceptions.blocks.includes(block.id)
   }
 }

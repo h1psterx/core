@@ -50,7 +50,8 @@ module.exports = class PostgresConnection extends ConnectionInterface {
 
       return this
     } catch (error) {
-      logger.error('Unable to connect to the database', error.stack)
+      logger.error('Unable to connect to the database')
+      logger.error(error.stack)
       process.exit(1)
     }
   }
@@ -113,7 +114,7 @@ module.exports = class PostgresConnection extends ConnectionInterface {
     if (!lastBlock) {
       errors.push('Last block is not available')
     } else {
-      const numberOfBlocks = await this.__numberOfBlocks()
+      const { count: numberOfBlocks } = await this.db.blocks.count()
 
       // Last block height equals the number of stored blocks
       if (lastBlock.data.height !== +numberOfBlocks) {
@@ -121,8 +122,18 @@ module.exports = class PostgresConnection extends ConnectionInterface {
       }
     }
 
-    const blockStats = await this.__blockStats()
-    const transactionStats = await this.__transactionStats()
+    const blockStats = await this.db.blocks.statistics()
+    const transactionStats = await this.db.transactions.statistics()
+    const { count: negativeBalances } = await this.db.wallets.findNegativeBalances()
+    const { count: negativeVoteBalances } = await this.db.wallets.findNegativeVoteBalances()
+
+    if (+negativeBalances > 1) {
+      errors.push(`Expected 1 wallet with a negative balance but found ${negativeBalances}`)
+    }
+
+    if (+negativeVoteBalances !== 0) {
+      errors.push(`Expected 0 wallets with a negative vote balance but found ${negativeVoteBalances}`)
+    }
 
     // Number of stored transactions equals the sum of block.numberOfTransactions in the database
     if (blockStats.numberOfTransactions !== transactionStats.count) {
@@ -148,34 +159,41 @@ module.exports = class PostgresConnection extends ConnectionInterface {
   /**
    * Get the top 51 delegates.
    * @param  {Number} height
+   * @param  {Array} delegates
    * @return {Array}
    */
-  async getActiveDelegates (height) {
+  async getActiveDelegates (height, delegates) {
     const maxDelegates = config.getConstants(height).activeDelegates
     const round = Math.floor((height - 1) / maxDelegates) + 1
 
-    if (this.activeDelegates && this.activeDelegates.length && this.activeDelegates[0].round === round) {
-      return this.activeDelegates
+    if (this.forgingDelegates && this.forgingDelegates.length && this.forgingDelegates[0].round === round) {
+      return this.forgingDelegates
     }
 
-    const data = await this.db.rounds.findById(round)
+    // When called during applyRound we already know the delegates, so we don't have to query the database.
+    if (!delegates || delegates.length === 0) {
+      delegates = await this.db.rounds.findById(round)
+    }
 
     const seedSource = round.toString()
     let currentSeed = crypto.createHash('sha256').update(seedSource, 'utf8').digest()
 
-    for (let i = 0, delCount = data.length; i < delCount; i++) {
+    for (let i = 0, delCount = delegates.length; i < delCount; i++) {
       for (let x = 0; x < 4 && i < delCount; i++, x++) {
         const newIndex = currentSeed[x] % delCount
-        const b = data[newIndex]
-        data[newIndex] = data[i]
-        data[i] = b
+        const b = delegates[newIndex]
+        delegates[newIndex] = delegates[i]
+        delegates[i] = b
       }
       currentSeed = crypto.createHash('sha256').update(currentSeed).digest()
     }
 
-    this.activeDelegates = data
+    this.forgingDelegates = delegates.map(delegate => {
+      delegate.round = +delegate.round
+      return delegate
+    })
 
-    return this.activeDelegates
+    return this.forgingDelegates
   }
 
   /**
@@ -183,7 +201,7 @@ module.exports = class PostgresConnection extends ConnectionInterface {
    * @param  {Array} delegates
    * @return {Array}
    */
-  saveRound (delegates) {
+  async saveRound (delegates) {
     logger.info(`Saving round ${delegates[0].round}`)
 
     return this.db.rounds.create(delegates)
@@ -199,44 +217,6 @@ module.exports = class PostgresConnection extends ConnectionInterface {
   }
 
   /**
-   * Load a list of delegates into memory.
-   * @param  {Number} maxDelegates
-   * @param  {Number} height
-   * @return {Array}
-   */
-  async buildDelegates (maxDelegates, height) {
-    if (height > 1 && height % maxDelegates !== 1) {
-      throw new Error('Trying to build delegates outside of round change')
-    }
-
-    let data = await this.db.rounds.delegates()
-
-    // NOTE: At the launch of the blockchain we may not have enough delegates.
-    // In order to have enough forging delegates we complete the list in a
-    // deterministic way (alphabetical order of publicKey).
-    if (data.length < maxDelegates) {
-      const chosen = data.map(delegate => delegate.publicKey)
-
-      const fillerWallets = chosen.length
-        ? await this.db.rounds.placeholdersWithout(maxDelegates - data.length, chosen)
-        : await this.db.rounds.placeholders(maxDelegates - data.length)
-
-      data = data.concat(fillerWallets)
-    }
-
-    // logger.info(`got ${data.length} voted delegates`)
-    const round = Math.floor((height - 1) / maxDelegates) + 1
-    data = data
-      .sort((a, b) => b.balance - a.balance)
-      .slice(0, maxDelegates)
-      .map(delegate => ({ ...{ round }, ...delegate }))
-
-    logger.debug(`Loaded ${data.length} active delegates`)
-
-    return data
-  }
-
-  /**
    * Load a list of wallets into memory.
    * @param  {Number} height
    * @return {Array}
@@ -249,7 +229,7 @@ module.exports = class PostgresConnection extends ConnectionInterface {
     if (fs.existsSync(spvPath)) {
       fs.removeSync(spvPath)
 
-      logger.info('ARK Core ended unexpectedly - resuming from where we left off :runner:')
+      logger.info('Ark Core ended unexpectedly - resuming from where we left off :runner:')
 
       return this.loadWallets()
     }
@@ -291,29 +271,21 @@ module.exports = class PostgresConnection extends ConnectionInterface {
     if (force) { // all wallets to be updated, performance is better without upsert
       await this.db.wallets.truncate()
 
-      for (const items of chunk(wallets, 5000)) {
-        try {
-          await this.db.wallets.create(items)
-        } catch (error) {
-          logger.error(error)
-        }
+      try {
+        const chunks = chunk(wallets, 5000).map(c => this.db.wallets.create(c))
+        await this.db.tx(t => t.batch(chunks))
+      } catch (error) {
+        logger.error(error.stack)
       }
     } else {
-      // NOTE: UPSERT is far from optimal. It can takes several seconds here
-      // if many accounts have to be updated at each round turn
-      //
-      // What can be done is to update accounts at each block in unsync manner
-      // what is really important is that db is sync with wallets in memory
-      // at round turn because votes computation to calculate active delegate list is made against database
-      //
-      // Other solution is to calculate the list of delegates against WalletManager so we can get rid off
-      // calling this function in sync manner i.e. 'await saveWallets()' -> 'saveWallets()'
+      // NOTE: The list of delegates is calculated in-memory against the WalletManager,
+      // so it is safe to perform the costly UPSERT non-blocking during round change only:
+      // 'await saveWallets(false)' -> 'saveWallets(false)'
       try {
         const queries = wallets.map(wallet => this.db.wallets.updateOrCreate(wallet))
-
         await this.db.tx(t => t.batch(queries))
       } catch (error) {
-        logger.error(error)
+        logger.error(error.stack)
       }
     }
 
@@ -662,34 +634,5 @@ module.exports = class PostgresConnection extends ConnectionInterface {
         logger.error(err)
       }
     })
-  }
-
-  /**
-   * This auxiliary method returns the number of blocks of the blockchain and
-   * is used to verify it
-   * @return {Number}
-   */
-  async __numberOfBlocks () {
-    const { count } = await this.db.blocks.count()
-
-    return count
-  }
-
-  /**
-   * This auxiliary method returns some stats about the blocks that are
-   * used to verify the blockchain
-   * @return {Promise}
-   */
-  async __blockStats () {
-    return this.db.blocks.statistics()
-  }
-
-  /**
-   * This auxiliary method returns some stats about the transactions that are
-   * used to verify the blockchain
-   * @return {Promise}
-   */
-  async __transactionStats () {
-    return this.db.transactions.statistics()
   }
 }

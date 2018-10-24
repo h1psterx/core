@@ -10,18 +10,10 @@ const Base = require('../../base')
  */
 class Loader extends Base {
   /**
-   * Get network configuration.
-   * @returns {Promise}
-   */
-  status () {
-    return this.http.get('loader/autoconfigure')
-  }
-
-  /**
    * Get node status.
    * @returns {Promise}
    */
-  syncing () {
+  status () {
     return this.http.get('loader/status')
   }
 
@@ -29,8 +21,16 @@ class Loader extends Base {
    * Get node syncing status.
    * @returns {Promise}
    */
-  configuration () {
+  syncing () {
     return this.http.get('loader/status/sync')
+  }
+
+  /**
+   * Get network configuration.
+   * @returns {Promise}
+   */
+  configuration () {
+    return this.http.get('loader/autoconfigure')
   }
 }
 

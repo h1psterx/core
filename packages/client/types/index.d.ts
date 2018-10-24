@@ -350,19 +350,19 @@ declare namespace resources {
          */
         class Loader extends Base {
             /**
-             * Get network configuration.
+             * Get node status.
              * @returns {Promise}
              */
             status(): Promise;
 
             /**
-             * Get node status.
+             * Get node syncing status.
              * @returns {Promise}
              */
             syncing(): Promise;
 
             /**
-             * Get node syncing status.
+             * Get network configuration.
              * @returns {Promise}
              */
             configuration(): Promise;
